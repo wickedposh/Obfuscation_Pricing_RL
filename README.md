@@ -1,3 +1,6 @@
+## Title : Application of RL algorithms to Game Theory
+ 
+ 
  ## Paper
   "Lying to a Bayesian: Optimal Randomisation in Repeated Pricing"
   DOI: https://doi.org/10.5281/zenodo.20695310   
