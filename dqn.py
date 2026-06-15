@@ -106,13 +106,17 @@ class DQNAgent:
         self.target.load_state_dict(self.online.state_dict())
         self.optimizer=torch.optim.AdamW(self.online.parameters(),lr=self.lr)
         self.memory = ReplayMemory(capacity=100000)
+    def norm_state(s):
+        mu,sigma=s
+        return (mu/150.0,sigma/10.0)
 
     def select_action(self, state, nu):
         if np.random.rand() < nu:
             return np.random.randint(self.n_actions)
         else:
+            state_norm=(state[0]/150.0,state[1]/10.0)
             with torch.no_grad():
-                state_tensor = torch.tensor(state, dtype=torch.float32).unsqueeze(0).to(device)
+                state_tensor = torch.tensor(state_norm, dtype=torch.float32).unsqueeze(0).to(device)
                 q_values = self.online(state_tensor)
                 return q_values.argmax(dim=1).item()
 
@@ -123,12 +127,14 @@ class DQNAgent:
             return None
         batch=self.memory.sample(batch_size)
         states=torch.tensor(batch.state,dtype=torch.float32).to(device)
+        states_normalized=states/torch.tensor([150.0,10.0],dtype=torch.float32).to(device)
         rewards=torch.tensor(batch.reward,dtype=torch.float32).to(device)
         actions=torch.tensor(batch.action,dtype=torch.long).to(device)
         next_states=torch.tensor(batch.next_state,dtype=torch.float32).to(device)
-        q_pred=self.online(states).gather(1,actions.unsqueeze(1)).squeeze(1)
+        next_state_normalized=next_states/torch.tensor([150.0,10.0],dtype=torch.float32).to(device)
+        q_pred=self.online(states_normalized).gather(1,actions.unsqueeze(1)).squeeze(1)
         with torch.no_grad():
-            next_state_values=self.target(next_states).max(1).values
+            next_state_values=self.target(next_state_normalized).max(1).values
             expected_values=(next_state_values*self.gamma)+rewards
         criterion=torch.nn.MSELoss()
         loss=criterion(q_pred,expected_values)
@@ -142,40 +148,91 @@ class DQNAgent:
         self.target.load_state_dict(self.online.state_dict())
 
 
+T_max = 50000
+nu_init, nu_min, decay = 1.0, 0.05, 0.9995
+K = 1000
+
 env = PricingGame()
-s = env.reset()
-for t in range(5):
-    s, r, _ = env.step(eps=0.5, price=env.mu)
-    print(f"env t={t}: s={s}, r={r}")
+agent = DQNAgent(n_observations=2, gamma=0.9)
+state = env.reset()
+losses, mu_trace, sigma_trace = [], [], []
 
-    env = PricingGame()
-    agent = DQNAgent(n_observations=2, gamma=0.9)
+for t in range(T_max):
+    nu = max(nu_min, nu_init * (decay ** t))
+    action_idx = agent.select_action(state, nu)
+    eps = agent.eps_grid[action_idx]
+    next_state, reward, _ = env.step(eps, env.mu)
+    agent.store(state, action_idx, reward, next_state)
 
-    T_max = 10000
-    nu_init, nu_min, decay = 1.0, 0.05, 0.9995
-    K = 1000  # target update period
+    loss = agent.learn(batch_size=32)
+    if loss is not None:
+        losses.append(loss)
 
-    state = env.reset()
-    losses = []
-    mu_trace, sigma_trace = [], []
+    if t % K == 0:
+        agent.update_target()
 
-    for t in range(T_max):
-        nu = max(nu_min, nu_init * (decay ** t))
-        action_idx = agent.select_action(state, nu)
-        eps = agent.eps_grid[action_idx]
+    state = next_state
+    mu_trace.append(state[0])
+    sigma_trace.append(state[1])
 
-        next_state, reward, _ = env.step(eps, env.mu)
-        agent.store(state, action_idx, reward, next_state)
+    # Diagnostics
+print(f"Final mu: {mu_trace[-1]:.2f}")
+print(f"Final sigma: {sigma_trace[-1]:.4f}")
+print(f"Final loss: {losses[-1] if losses else 'N/A':.4f}")
+print(f"Mean loss over last 100 steps: {np.mean(losses[-100:]):.4f}")
+print(f"Loss trajectory: first={losses[0]:.4f}, mid={losses[len(losses) // 2]:.4f}, last={losses[-1]:.4f}")
+# 1. What action does DQN pick at different states?
+test_states = [(91, 10), (95, 5), (100, 1), (100, 0.001)]
+for s in test_states:
+    a = agent.select_action(s, nu=0.0)  # pure greedy
+    print(f"state={s}: best ε = {agent.eps_grid[a]:.2f}")
 
-        loss = agent.learn(batch_size=32)
-        if loss is not None:
-            losses.append(loss)
+import matplotlib.pyplot as plt
 
-        if t % K == 0:
-            agent.update_target()
+fig, axes = plt.subplots(1, 2, figsize=(12, 4))
+axes[0].plot(losses)
+axes[0].set_title("Loss")
+axes[0].set_yscale("log")
+axes[1].plot(sigma_trace)
+axes[1].set_title("Sigma")
+plt.show()
 
-        state = next_state
-        mu_trace.append(state[0])
-        sigma_trace.append(state[1])
+results = {}
+gammas=[0.5,0.7,0.9,0.99]
+for gamma in gammas:
+    eps_stars=[]
+    for seed in range(5):
+        torch.manual_seed(seed)
+        np.random.seed(seed)
+        env = PricingGame()
+        agent = DQNAgent(n_observations=2, gamma=gamma)
+        state = env.reset()
+        losses, mu_trace, sigma_trace = [], [], []
+        for t in range(T_max):
+            nu = max(nu_min, nu_init * (decay ** t))
+            action_idx = agent.select_action(state, nu)
+            eps = agent.eps_grid[action_idx]
+            next_state, reward, _ = env.step(eps, env.mu)
+            agent.store(state, action_idx, reward, next_state)
+
+            loss = agent.learn(batch_size=32)
+            if loss is not None:
+                losses.append(loss)
+
+            if t % K == 0:
+                agent.update_target()
+
+            state = next_state
+        with torch.no_grad():
+            s = torch.tensor([91.0 / 150.0, 10.0 / 10.0]).unsqueeze(0).to(
+                    device)  # normalized
+            q = agent.online(s)
+            eps_stars.append(agent.eps_grid[q.argmax().item()])
+    mean_eps=np.mean(eps_stars)
+    std_eps=np.std(eps_stars)
+    results[gamma] = (mean_eps, std_eps)
+    print(f"γ={gamma}: ε* = {mean_eps:.3f} {std_eps:.4f}")
+
+
 
 
