@@ -23,7 +23,6 @@ rior variance, confirming that mixed strategies prevent posterior collapse.
 
 
   ## Results
-  [1-2 sentences of the headline finding]
   All three methods find optimal ε* < 1 — randomisation improves consumer 
   surplus. DQN recovers the monotone ε*(β) trend that tabular Q-learning's
   discretisation misses.
@@ -31,7 +30,7 @@ rior variance, confirming that mixed strategies prevent posterior collapse.
  
 
 
-##Code
+## Code
 
 -"MC.py" - Monte Carlo simulation
 -"QLearning.py" - tabular Q-learning simulation
