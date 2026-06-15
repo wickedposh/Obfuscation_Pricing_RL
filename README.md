@@ -3,7 +3,20 @@
   DOI: https://doi.org/10.5281/zenodo.20695310   
 
 ## Abstract 
-Reinforcement Learning solves a wide range of games ( Chess, Go, Atari ). Here we apply RL methods to a game-theoretic problem in economics : a repeated pricing game between a Bayesian-updating producer and a consumer with private willingness-to-pay. We established existence of Bayesian Nash Equilibrium for the discrete-action setting via Carbonell-Nicolau (2015), and of the mixed strategy Nash equilibrium for the continuous-action extension through Reny (1999). We have used three different approaches (Monte Carlo, Q-learning, Deep Q-Network) to simulate the benefits of randomisation for consumer’s behaviour. All three approaches show a consistent result that $\epsilon^{*}<1$, supporting randomisation as an obfuscation strategy. Tabular Q-learning shows no clear monotonic trend in $\epsilon^{*}(\beta)$, while DQN recovers the monotone decrease predicted by Monte Carlo, reconciling the previously-observed discrepancy. We empirically validate the Karp-Kleinberg lower bound on posterior variance, confirming that mixed strategies prevent posterior collapse.
+Reinforcement Learning has succeeded at a wide range of games ( Chess,
+Go, Atari ). Here we apply RL methods to a game-theoretic problem in eco-
+nomics : a repeated pricing game between a Bayesian-updating producer
+and a consumer with private willingness-to-pay. We established existence
+of the mixed strategy Nash equilibrium for the continuous-action extension
+through Reny (1999), which we then approximate computationally via three
+RL methods. We have used three different approaches (Monte Carlo, Q-
+learning, Deep Q-Network) to simulate the benefits of randomisation for con-
+sumer’s behaviour. All three approaches show a consistent result that ϵ∗ < 1,
+supporting randomisation as an obfuscation strategy. Tabular Q-learning
+shows no clear monotonic trend in ϵ∗(β), while DQN recovers the monotone
+decrease predicted by Monte Carlo, reconciling the previously-observed dis-
+crepancy. We empirically validate the Karp-Kleinberg lower bound on poste-
+rior variance, confirming that mixed strategies prevent posterior collapse.
 
 
 
