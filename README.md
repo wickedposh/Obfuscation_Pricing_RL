@@ -37,7 +37,6 @@ the obfuscation incentive saturates once consumers are sufficiently patient.
 
 ### Files
 - `hetero_dynamic.py` — two-sided dynamic game (producer belief-learning + consumer DQN)
-- (static variants: `hetero_game.py`, `hetero_indiv.py`)
 
 
 ## Title : Application of RL algorithms to Game Theory
