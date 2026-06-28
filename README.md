@@ -29,7 +29,7 @@ rather than to belief-state discretisation.
 - `eps_star_vs_beta.png` — results plot
 
 ---
-
+**DOI:** https://doi.org/10.5281/zenodo.20983755
 ## Project 2 — Heterogeneous Market: Does Obfuscation Survive a Rational Producer?
 *(working title — in progress)*
 
